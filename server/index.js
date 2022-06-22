@@ -45,11 +45,12 @@ server.use(cors.actual)
 server.use(restify.plugins.bodyParser());
 require('./controllers/user')(server, session);
 
-//server.get('/hello/:name', respond);
+server.get('/hello/:name', respond);
 //server.head('/hello/:name', respond);
 
 //server.use(serveStatic(path.resolve(__dirname, "./frontend/build")));
-const client = serveStatic(path.resolve(__dirname, "/frontend/build"))
+const client = serveStatic(__dirname, "/frontend/build", { fallthrough: true })
+//console.log("client: ", client);
 server.get('/client', client);
 server.listen(process.env.PORT || 8080, function() {
   console.log('%s listening at %s', server.name, server.url);
