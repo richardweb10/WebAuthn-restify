@@ -48,10 +48,24 @@ require('./controllers/user')(server, session);
 server.get('/hello/:name', respond);
 //server.head('/hello/:name', respond);
 
+function setCustomCacheControl (res, path) {
+  if (serveStatic.mime.lookup(path) === 'text/html') {
+    // Custom Cache-Control for HTML files
+    res.setHeader('Cache-Control', 'public, max-age=0')
+  }
+}
+
 //server.use(serveStatic(path.resolve(__dirname, "./frontend/build")));
-const client = serveStatic(__dirname, "/frontend/build", { fallthrough: true })
-//console.log("client: ", client);
-server.get('/client', client);
+const path2 =  __dirname.substring(0,__dirname.indexOf("\server")-1);
+
+const client  = serveStatic(path2+ "/frontend/build", {
+  pathParam: 'file',
+  setHeaders: setCustomCacheControl
+})
+console.log("client: ", client);
+
+
+server.get('/static/:file', client);
 server.listen(process.env.PORT || 8080, function() {
   console.log('%s listening at %s', server.name, server.url);
 });
