@@ -48,8 +48,8 @@ require('./controllers/user')(server, session);
 //server.get('/hello/:name', respond);
 //server.head('/hello/:name', respond);
 
-server.use(serveStatic(path.resolve(__dirname, "./frontend/build")));
-
+//server.use(serveStatic(path.resolve(__dirname, "./frontend/build")));
+server.get('/client', serveStatic(path.resolve(__dirname, "./frontend/build")));
 server.listen(process.env.PORT || 8080, function() {
   console.log('%s listening at %s', server.name, server.url);
 });
