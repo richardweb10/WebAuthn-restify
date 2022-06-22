@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser');
 //const cors = require('cors');
 const corsMiddleware = require('restify-cors-middleware')
 var CookieParser = require('restify-cookies');
+const path = require("path");
+var serveStatic = require('serve-static-restify')
 const session = require('restify-cookie-session')({
   debug : true,
   ttl   : 60
@@ -45,6 +47,8 @@ require('./controllers/user')(server, session);
 
 //server.get('/hello/:name', respond);
 //server.head('/hello/:name', respond);
+
+server.use(serveStatic(path.resolve(__dirname, "./frontend/build")));
 
 server.listen(8080, function() {
   console.log('%s listening at %s', server.name, server.url);

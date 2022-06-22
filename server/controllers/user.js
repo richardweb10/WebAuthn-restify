@@ -140,6 +140,7 @@ function Users(server, session){
 		  });
 		
 		const webAuthnResp = makeCred;
+		console.log("webAuthnResp: ", webAuthnResp);
 		const clientData = JSON.parse(base64url.decode(webAuthnResp.response.clientDataJSON));
 		
 
@@ -153,6 +154,7 @@ function Users(server, session){
 		let user = await User.findOne({ email });
 		if(webAuthnResp.response.attestationObject !== undefined) {
 			/* This is create cred */
+			console.log("webAuthnResp: ", webAuthnResp);
 			result = await verifyAuthenticatorAttestationResponse(webAuthnResp);
 	
 			if(result.verified) {

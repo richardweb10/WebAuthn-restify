@@ -43,10 +43,9 @@ let  preformatMakeCredReq = (makeCredReq) => {
 
 let preformatGetAssertReq = (getAssert) => {
 	getAssert.challenge = base64url.decode(getAssert.challenge);
-    getAssert.allowCredentials[0].id = base64url.decode(getAssert.allowCredentials[0].id);
-	/*for(let allowCred of getAssert.allowCredentials) {
+	for(let allowCred of getAssert.allowCredentials) {
 		allowCred.id = base64url.decode(allowCred.id);
-	}*/
+	}
 
 	return getAssert;
 };
