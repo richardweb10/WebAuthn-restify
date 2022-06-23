@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/dinamicadigitalsas/verifik-backend-test#readme",
   "dependencies": {
+    "@fidm/x509": "^1.2.1",
     "@lapo/asn1js": "^1.2.3",
     "cookie-parser": "^1.4.6",
     "cookie-session": "^2.0.0",
@@ -27,6 +28,7 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.0.1",
     "elliptic": "^6.5.4",
+    "iso-3166-1": "^2.1.1",
     "jsrsasign": "^10.5.24",
     "mongoose": "^6.4.0",
     "node-rsa": "^1.1.1",
