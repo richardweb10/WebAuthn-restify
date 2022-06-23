@@ -35,7 +35,7 @@ function Users(server, session){
 			else {
 				const user = await User.create({
 					id: randomBase64URLBuffer(8),
-					name: email.split('@')[0],
+					name: email,
 					email,
 				});
 			

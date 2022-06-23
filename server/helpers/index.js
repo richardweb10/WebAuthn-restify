@@ -17,7 +17,7 @@ const iso_3166_1 = require('iso-3166-1');
   * @param  {String} publicKey - PEM encoded public key
   * @return {Boolean}
   */
- 
+
 
 async function verifySignature(signature, data, publicKey) {
 	return await crypto.createVerify('SHA256')
@@ -38,7 +38,7 @@ function randomHex32String() {
 
 function serverMakeCred(id, email) {
 	const name = email;
-	const displayName = email.split('@')[0];
+	const displayName = email;
 
 	const makeCredentialds = {
 		challenge: randomBase64URLBuffer(32),
@@ -50,13 +50,12 @@ function serverMakeCred(id, email) {
 			name,
 			displayName,
 		},
-		attestation: 'direct',
-
-		pubKeyCredParams: [
-            {
-                type: "public-key", alg: -7 // "ES256" IANA COSE Algorithms registry
-            }
-        ]
+		pubKeyCredParams: [{alg: -7, type: "public-key"}],
+		authenticatorSelection: {
+			authenticatorAttachment: "cross-platform",
+		},
+		timeout: 60000,
+		attestation: "direct"
 	};
 
 	return makeCredentialds;
@@ -67,7 +66,7 @@ function serverGetAssertion(authenticators) {
         allowCredentials.push({
               type: 'public-key',
               id: authr.credID,
-              transports: ['usb', 'nfc', 'ble']
+              transports: ['usb', 'nfc', 'ble','internal']
         })
     }
     return {
@@ -180,6 +179,8 @@ let verifyAuthenticatorAttestationResponse = (webAuthnResponse) => {
     let attestationBuffer = base64url.toBuffer(webAuthnResponse.response.attestationObject);
     let ctapMakeCredResp  = cbor.decodeAllSync(attestationBuffer)[0];
 
+	console.log("ctapMakeCredResp: ", ctapMakeCredResp)
+
     let response = {'verified': false};
     if(ctapMakeCredResp.fmt === 'fido-u2f') {
         let authrDataStruct = parseMakeCredAuthData(ctapMakeCredResp.authData);
@@ -205,7 +206,7 @@ let verifyAuthenticatorAttestationResponse = (webAuthnResponse) => {
                 credID: base64url.encode(authrDataStruct.credID)
             }
         }
-    } else if(ctapMakeCredResp.fmt === 'packed' && ctapMakeCredResp.attStmt.hasOwnProperty('x5c')) {
+    } else if(ctapMakeCredResp.fmt == 'packed' && ctapMakeCredResp.attStmt.hasOwnProperty('x5c')) {
         let authrDataStruct = parseMakeCredAuthData(ctapMakeCredResp.authData);
 
         if(!(authrDataStruct.flags & U2F_USER_PRESENTED))

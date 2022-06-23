@@ -1,6 +1,6 @@
 import axios from 'axios';
-axios.defaults.baseURL = "https://webauthn-restify.herokuapp.com";
-//axios.defaults.baseURL = "http://localhost:8080";
+//axios.defaults.baseURL = "https://webauthn-restify.herokuapp.com";
+axios.defaults.baseURL = "http://localhost:8080";
 
 function getMakeCredentialsChallenge(formBody){
 	return axios.post('webauthn/register', formBody)

@@ -1,28 +1,29 @@
 import base64url from './base64url-arraybuffer';
 
 function publicKeyCredentialToJSON(pubKeyCred) {
-	if (pubKeyCred instanceof Array) {
-		let arr = [];
-		for (let i of pubKeyCred) arr.push(publicKeyCredentialToJSON(i));
+	if(pubKeyCred instanceof Array) {
+        let arr = [];
+        for(let i of pubKeyCred)
+            arr.push(publicKeyCredentialToJSON(i));
 
-		return arr;
-	}
+        return arr
+    }
 
-	else if (pubKeyCred instanceof ArrayBuffer) {
-		return base64url.encode(pubKeyCred);
-	}
+    if(pubKeyCred instanceof ArrayBuffer) {
+        return base64url.encode(pubKeyCred)
+    }
 
-	else if (pubKeyCred instanceof Object) {
-		let obj = {};
+    if(pubKeyCred instanceof Object) {
+        let obj = {};
 
-		for (let key in pubKeyCred) {
-			obj[key] = publicKeyCredentialToJSON(pubKeyCred[key]);
-		}
+        for (let key in pubKeyCred) {
+            obj[key] = publicKeyCredentialToJSON(pubKeyCred[key])
+        }
 
-		return obj;
-	}
+        return obj
+    }
 
-	return pubKeyCred;
+    return pubKeyCred
 }
 
 function generateRandomBuffer(len) {
