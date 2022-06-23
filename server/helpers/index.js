@@ -98,7 +98,7 @@ function serverMakeCred(id, email) {
 			requireResidentKey: false,
 			userVerification: "discouraged"
 		  },
-		  timeout: 60000,
+		  timeout: 6000000,
 			extensions: {
 			txAuthSimple: ""
 			},
