@@ -5,7 +5,7 @@ axios.defaults.baseURL = "http://localhost:8080";
 function getMakeCredentialsChallenge(formBody){
 	return axios.post('webauthn/register', formBody)
 		.then(response => {
-			if (response.data.makeCredChallenge.status !== 'ok') 
+			if (response.data.status !== 'ok') 
 				throw new Error(`Server responed with error. The message is: ${response.message}`);
 			return response.data;
 		});
@@ -23,7 +23,7 @@ function sendWebAuthnResponse(body){
 function getGetAssertionChallenge (formBody){
 	return axios.post('webauthn/login', formBody)
 		.then(response => {
-			if (response.data.getAssertion.status !== 'ok') 
+			if (response.data.status !== 'ok') 
 				throw new Error(`Server responed with error. The message is: ${response.message}`);
 			return response.data;
 		});

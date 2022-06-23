@@ -40,7 +40,7 @@ function Users(server, session){
 				});
 			
 				let makeCredChallenge = serverMakeCred(user.id, user.email);
-				makeCredChallenge.status = 'ok';
+				//makeCredChallenge.status = 'ok';
 				const data = { 
 					challenge: makeCredChallenge.challenge,
 					email
@@ -53,7 +53,7 @@ function Users(server, session){
 					console.log("status-" + status + data.challenge); //debug code
 				});
 					
-				res.send({makeCredChallenge , sid: req.session.sid});
+				res.send({makeCredChallenge , sid: req.session.sid, status : 'ok'});
 			}
 			next();
 	}
@@ -89,7 +89,7 @@ function Users(server, session){
 	
 		else {
 			let getAssertion = serverGetAssertion(user.authenticators);
-			getAssertion.status = 'ok';
+			//getAssertion.status = 'ok';
 
 			const data = { 
 				challenge: getAssertion.challenge,
@@ -103,7 +103,7 @@ function Users(server, session){
 				console.log("status-" + status + data.challenge); //debug code
 			});
 				
-			res.send({getAssertion , sid: req.session.sid});
+			res.send({getAssertion , sid: req.session.sid, status : 'ok'});
 			
 		}
 		next()

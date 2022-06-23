@@ -22,6 +22,8 @@ function App() {
 		getMakeCredentialsChallenge({email})
 			.then( async (response) => {
 				const publicKey = preformatMakeCredReq(response.makeCredChallenge);
+
+				console.log("publicKey: ", publicKey)
 				
 				const infoNav = await navigator.credentials.create({ publicKey });
 				return { 
