@@ -8,12 +8,23 @@ const {
 	verifyAuthenticatorAssertionResponse 
 } = require('../helpers');
 
+const {
+	// Registration
+	generateRegistrationOptions,
+	verifyRegistrationResponse,
+	// Authentication
+	generateAuthenticationOptions,
+	verifyAuthenticationResponse,
+  } = require('@simplewebauthn/server');
+
 
 function respond(req, res, next) {
 	console.log("hello")
 	res.send('hello ' + req.params.name);
 	next();
   }
+
+let expectedOrigin = `http://localhost:3000`;
 
 function Users(server, session){
 
@@ -37,27 +48,133 @@ function Users(server, session){
 					id: randomBase64URLBuffer(8),
 					name: email,
 					email,
+					devices: [],
 				});
 			
-				let makeCredChallenge = serverMakeCred(user.id, user.email);
-				//makeCredChallenge.status = 'ok';
-				const data = { 
-					challenge: makeCredChallenge.challenge,
+				const opts = {
+					rpName: 'Richard WebAuthn',
+					rpID: 'localhost',
+					userID: user.id ,
+					userName: user.name,
+					timeout: 60000,
+					attestationType: 'direct',
+					/**
+					 * Passing in a user's list of already-registered authenticator IDs here prevents users from
+					 * registering the same device multiple times. The authenticator will simply throw an error in
+					 * the browser if it's asked to perform registration when one of these ID's already resides
+					 * on it.
+					 */
+					excludeCredentials: user.devices.map(dev => ({
+					  id: dev.credentialID,
+					  type: 'public-key',
+					  transports: dev.transports,
+					})),
+					/**
+					 * The optional authenticatorSelection property allows for specifying more constraints around
+					 * the types of authenticators that users to can use for registration
+					 */
+					authenticatorSelection: {
+					  userVerification: 'required',
+					},
+					/**
+					 * Support the two most common algorithms: ES256, and RS256
+					 */
+					supportedAlgorithmIDs: [-7, -257],
+				  };
+				
+				  const options = generateRegistrationOptions(opts);
+
+				  const data = { 
+					challenge: options.challenge,
 					email
 				}
-				session.save(req.session.sid, data, function(err, status){
+
+				  session.save(req.session.sid, data, function(err, status){
 					if(err) {
 						console.log("Session data cannot be saved");
 						return;
 					}        
 					console.log("status-" + status + data.challenge); //debug code
 				});
-					
-				res.send({makeCredChallenge , sid: req.session.sid, status : 'ok'});
+				
+				  /**
+				   * The server needs to temporarily remember this value for verification, so don't lose it until
+				   * after you verify an authenticator response.
+				   */
+				
+				  res.json( {options , sid: req.session.sid, status : 'ok'});
+
+
 			}
 			next();
 	}
 	);
+
+	server.post('/webauthn/response-register', async (req, res, next) => {
+
+		const {makeCred, sid} = req.body;
+
+		let {challenge, email} = await new Promise((resolve, reject) => {
+			session.load(sid,function(err,data){
+				if(err) {
+					res.writeHead(440, 'Login Time Out', {'Content-Type': 'application/json'});
+					res.end("{'Status': 'Error', 'Message': 'Session expired or does not exist'}");
+					return;
+				}
+				console.log("data-session-load: ", data);
+				resolve(data);
+					 
+			 });
+		  });
+
+		  const expectedChallenge = challenge;
+		  let user = await User.findOne({ email });
+
+	let verification;
+	try {
+		const opts= {
+		  credential: JSON.parse(makeCred),
+		  expectedChallenge: `${expectedChallenge}`,
+		  expectedOrigin,
+		  expectedRPID: 'localhost',
+		  requireUserVerification: true,
+		};
+
+		verification = await verifyRegistrationResponse(opts);
+	  } catch (error) {
+		return res.json({
+			'status': 'failed',
+			'message': error
+		});
+	  }
+
+	  const { verified, registrationInfo } = verification;
+
+	  if (verified && registrationInfo) {
+		const { credentialPublicKey, credentialID, counter } = registrationInfo;
+	
+		const existingDevice = user.devices.find(device => device.credentialID === credentialID);
+	
+		if (!existingDevice) {
+		  /**
+		   * Add the returned device to the user's list of devices
+		   */
+		  const newDevice = {
+			credentialPublicKey: base64url.encode(credentialPublicKey),
+			credentialID: base64url.encode(credentialID),
+			counter,
+			transports: JSON.parse(makeCred).transports,
+		  };
+		  user.devices.push(newDevice);
+		  user.save();
+		}
+	  }
+
+	  res.json({ 'status': 'ok', 'sid': req.session.sid , verified});
+	
+	  next();
+
+	});
 	
 	server.post('/webauthn/registerfail', async(req, res, next) => {
 		const { email } = req.body;
@@ -85,14 +202,23 @@ function Users(server, session){
 		if (!user){
 			res.status(400);
 			res.send('User does not exist');	
-		}
-	
-		else {
-			let getAssertion = serverGetAssertion(user.authenticators);
-			//getAssertion.status = 'ok';
+		}else {
+
+			const opts = {
+				timeout: 60000,
+				allowCredentials: user.devices.map(dev => ({
+				  id: base64url.toBuffer(dev.credentialID),
+				  type: 'public-key',
+				  transports: dev.transports ?? ['usb', 'ble', 'nfc', 'internal'],
+				})),
+				userVerification: 'required',
+				rpID: 'localhost',
+			  };
+
+			const options = generateAuthenticationOptions(opts);
 
 			const data = { 
-				challenge: getAssertion.challenge,
+				challenge: options.challenge,
 				email
 			}
 			session.save(req.session.sid, data, function(err, status){
@@ -103,29 +229,18 @@ function Users(server, session){
 				console.log("status-" + status + data.challenge); //debug code
 			});
 				
-			res.send({getAssertion , sid: req.session.sid, status : 'ok'});
+			res.json({options , sid: req.session.sid, status : 'ok'});
 			
 		}
 		next()
 	});
 	
-	server.post('/webauthn/response', async (req, res, next) => {
-		const {makeCred, sid} = req.body;
+	server.post('/webauthn/response-login', async (req, res, next) => {
+		const {asseResp, sid} = req.body;
+
+		console.log("asseResp: ", asseResp)
 		
-		console.log("req.session.challenge: ",req.session.challenge);
-		if (
-			!makeCred ||
-			!makeCred.id ||
-			!makeCred.rawId ||
-			!makeCred.response ||
-			!makeCred.type ||
-			makeCred.type !== 'public-key'
-		){
-			res.json({
-				status: 'failed',
-				message: 'Response missing one or more of id/rawId/response/type fields, or type is not public-key!',
-			});
-		}
+		
 		let {challenge, email} = await new Promise((resolve, reject) => {
 			session.load(sid,function(err,data){
 				if(err) {
@@ -139,39 +254,53 @@ function Users(server, session){
 			 });
 		  });
 		
-		const webAuthnResp = makeCred;
-		console.log("webAuthnResp: ", webAuthnResp);
-		const clientData = JSON.parse(base64url.decode(webAuthnResp.response.clientDataJSON));
-		
-
-		if(clientData.challenge !== challenge) {
-			res.json({
-				'status': 'failed',
-				'message': 'Challenges don\'t match!'
-			});
-		}
-		let result;
 		let user = await User.findOne({ email });
-		if(webAuthnResp.response.attestationObject !== undefined) {
-			/* This is create cred */
-			console.log("webAuthnResp: ", webAuthnResp);
-			result = await verifyAuthenticatorAttestationResponse(webAuthnResp);
-	
-			if(result.verified) {
-				user.authenticators.push(result.authrInfo);
-				user.registered = true;
-				user.save();
+
+		const expectedChallenge = challenge;
+
+		let dbAuthenticator;
+		const bodyCredIDBuffer = base64url.toBuffer(asseResp.rawId);
+
+		for (const dev of user.devices) {
+			if (base64url.toBuffer(dev.credentialID).equals(bodyCredIDBuffer)) {
+			  dbAuthenticator = dev;
+			  break;
 			}
-		} else if(webAuthnResp.response.authenticatorData !== undefined) {
-			/* This is get assertion */
-			result = await verifyAuthenticatorAssertionResponse(webAuthnResp, user.authenticators);
-		} else {
-			res.json({
-				'status': 'failed',
-				'message': 'Can not determine type of response!'
-			});
-		}
-		if(result.verified) {
+		  }
+
+		  if (!dbAuthenticator) {
+			throw new Error(`could not find authenticator matching ${asseResp.id}`);
+		  }
+
+		  let verification;
+
+		  dbAuthenticator.credentialPublicKey = base64url.toBuffer(dbAuthenticator.credentialPublicKey)
+		  dbAuthenticator.credentialID = base64url.toBuffer(dbAuthenticator.credentialID)
+
+		  try {
+			const opts = {
+			  credential: asseResp,
+			  expectedChallenge: `${expectedChallenge}`,
+			  expectedOrigin,
+			  expectedRPID: 'localhost',
+			  authenticator: dbAuthenticator,
+			  requireUserVerification: true,
+			};
+			console.log("opts-reslogin: ", opts)
+			verification = await verifyAuthenticationResponse(opts);
+		  } catch (error) {
+			res.status(400);
+			res.send(error);	
+		  }
+
+		  console.log("verification: ", verification)
+
+		  const { verified, authenticationInfo } = verification;
+
+		  if (verified) {
+			// Update the authenticator's counter in the DB to the newest count in the authentication
+			dbAuthenticator.counter = authenticationInfo.newCounter;
+
 			const data = {
 				loggedIn: true,
 				email
@@ -183,13 +312,9 @@ function Users(server, session){
 				}        
 				console.log("status-" + status + data.loggedIn); //debug code
 			});
-			res.json({ 'status': 'ok', 'sid': req.session.sid });
-		} else {
-			res.json({
-				'status': 'failed',
-				'message': 'Can not authenticate signature!'
-			});
-		}
+		  }
+				
+		res.json({ 'status': 'ok', 'sid': req.session.sid, verified });
 		next();
 	});
 	

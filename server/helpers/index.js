@@ -43,8 +43,8 @@ function serverMakeCred(id, email) {
 	const makeCredentialds = {
 		challenge: randomBase64URLBuffer(32),
 		rp: {
-			id: 'front-webauthn.herokuapp.com',
-			name: 'front-webauthn.herokuapp.com',
+			id: 'localhost',
+			name: 'Richard WebAuth',
 		},
 		user: {
 			id,
@@ -93,16 +93,12 @@ function serverMakeCred(id, email) {
 			  "alg": -8
 			}
 		  ],
-		  authenticatorSelection: {
-			authenticatorAttachment: "cross-platform",
-			requireResidentKey: false,
-			userVerification: "discouraged"
-		  },
+          "authenticatorSelection": {
+            "userVerification": "required",
+            "requireResidentKey": false
+          },
 		  timeout: 6000000,
-			extensions: {
-			txAuthSimple: ""
-			},
-		attestation: "direct"
+		    attestation: "direct"
 		
 	};
 

@@ -1,11 +1,30 @@
 import axios from 'axios';
-axios.defaults.baseURL = "https://webauthn-restify.herokuapp.com";
-//axios.defaults.baseURL = "http://localhost:8080";
+axios.defaults.baseURL = "http://localhost:8080";
 
 function getMakeCredentialsChallenge(formBody){
 	return axios.post('webauthn/register', formBody)
 		.then(response => {
 			if (response.data.status !== 'ok') 
+				throw new Error(`Server responed with error. The message is: ${response.message}`);
+			return response.data;
+		});
+}
+
+
+
+function sendWebAuthnResponseRegister(body){
+	return axios.post('/webauthn/response-register', body)
+		.then(response => {
+			if(response.data.status !== 'ok')
+				throw new Error(`Server responed with error. The message is: ${response.message}`);
+			return response.data;
+		});
+}
+
+function sendWebAuthnResponseLogin(body){
+	return axios.post('/webauthn/response-login', body)
+		.then(response => {
+			if(response.data.status !== 'ok')
 				throw new Error(`Server responed with error. The message is: ${response.message}`);
 			return response.data;
 		});
@@ -34,11 +53,6 @@ function getProfile(body) {
 		.then(response => response.data);
 }
 
-function getTest() {
-	console.log("entro en getTest")
-	return axios.post('/webauthn/hello/Richard')
-		.then(response => response.data);
-}
 
 function logout() {
 	return axios.get('webauthn/profile')
@@ -55,5 +69,6 @@ export {
 	getProfile,
 	logout,
 	registerFail,
-	getTest
+	sendWebAuthnResponseRegister,
+	sendWebAuthnResponseLogin
 };

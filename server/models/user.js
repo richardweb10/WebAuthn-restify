@@ -13,7 +13,7 @@ const User = mongoose.model(
 		email: {
 			type: String,
 		},
-		authenticators: {
+		devices: {
 			type: Array,
 		},
 		registered: {

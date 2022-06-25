@@ -3,8 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Grid, Button, Message, Form, Segment, Header } from 'semantic-ui-react';
 import { getGetAssertionChallenge, getMakeCredentialsChallenge, 
 	sendWebAuthnResponse, getProfile, logout,
-	 registerFail, getTest } from './webauthn';
+	 registerFail, sendWebAuthnResponseRegister,
+	 sendWebAuthnResponseLogin } from './webauthn';
 import { preformatGetAssertReq, preformatMakeCredReq, publicKeyCredentialToJSON } from './helpers';
+import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 
 function App() {
 	const [errMsg, setErrMsg] = useState('');
@@ -21,22 +23,20 @@ function App() {
 	const handleRegister = async () => {
 		getMakeCredentialsChallenge({email})
 			.then( async (response) => {
-				const publicKey = preformatMakeCredReq(response.makeCredChallenge);
 
-				console.log("publicKey: ", publicKey)
-				
-				const infoNav = await navigator.credentials.create({ publicKey });
+				const opts = response.options;
+
+				const attResp = await startRegistration(opts);
 				return { 
-					infoNav, 
+					attResp, 
 					sid: response.sid };
-			})
+				})
 			.then((response) => {
-				const makeCredResponse = publicKeyCredentialToJSON(response.infoNav);
-				return sendWebAuthnResponse(
-					{makeCred: makeCredResponse,
-					sid: response.sid
-					}
-					);
+				return sendWebAuthnResponseRegister({
+					makeCred: JSON.stringify(response.attResp),
+					sid: response.sid	
+				}
+				)
 			})
 			.then((response) => {
 				if(response.status === 'ok'){
@@ -60,19 +60,23 @@ function App() {
 	const handleLogin = async () => {
 		getGetAssertionChallenge({email})
 			.then( async (response) => {
-				console.log("response.getAssertion: ", response.getAssertion)
-				const publicKey = preformatGetAssertReq(response.getAssertion);
-				const infoNav = await navigator.credentials.get({ publicKey });
+
+				const opts = response.options;
+
+				console.log("opts: ", opts)
+
+				const asseResp = await startAuthentication(opts);
+				console.log("asseResp: ", asseResp)
 				return { 
-					infoNav, 
+					asseResp, 
 					sid: response.sid };
 			})
 			.then((response) => {
-				let getAssertionResponse = publicKeyCredentialToJSON(response.infoNav);
-				return sendWebAuthnResponse(
-					{makeCred: getAssertionResponse,
-						sid: response.sid
-						});
+
+				return sendWebAuthnResponseLogin({
+					asseResp: response.asseResp,
+					sid: response.sid	
+				});
 			})
 			.then((response) => {
 				if(response.status === 'ok') {
@@ -178,8 +182,6 @@ function App() {
 									<br/>
 									<strong>Credential information:</strong>
 									<br/>
-									<strong>Format: </strong>{profileData.authenticators[0].fmt}
-									<br/>
 									<strong>Public key: </strong>
 									<br/>
 									<div style={{
@@ -188,7 +190,8 @@ function App() {
 										marginLeft: '25%',
 										marginRight: '25%'
 									}}>
-										{profileData.authenticators[0].publicKey}
+										{profileData.devices[0].credentialPublicKey
+}
 									</div>
 									
 								</>
